@@ -47,9 +47,31 @@ python3 deploy.py --password YourPassword1 --prefix myenv --location westeurope
 
 Once deployed, the script prints the API URL and SSH command.
 
+## Stopping and Starting
 
-### Destroy everything
+When not in use, deallocate the VM to avoid compute charges:
+```bash
+az vm deallocate --resource-group rg-<prefix> --name vm-<prefix>
+```
 
+Start it again:
+```bash
+az vm start --resource-group rg-<prefix> --name vm-<prefix>
+```
+
+Stop the database:
+```bash
+az postgres flexible-server stop --resource-group rg-<prefix> --name psql-<prefix>-<suffix>
+```
+
+Start it again:
+```bash
+az postgres flexible-server start --resource-group rg-<prefix> --name psql-<prefix>-<suffix>
+```
+
+> Note: Azure automatically restarts a stopped PostgreSQL Flexible Server after 7 days.
+
+To destroy everything permanently:
 ```bash
 terraform destroy
 ```
