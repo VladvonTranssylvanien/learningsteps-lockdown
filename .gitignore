@@ -8,3 +8,4 @@ terraform.tfstate.backup
 __pycache__/
 *.pyc
 .claude/
+SECURITY_ROADMAP.md
