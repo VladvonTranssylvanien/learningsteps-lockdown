@@ -35,14 +35,14 @@ python deploy.py
 The script will:
 1. Log you in to Azure if needed (opens a browser)
 2. Generate an SSH key pair in the project folder
-3. Ask for a resource prefix and Azure region (press Enter for defaults)
+3. Ask for a resource prefix and Azure region (IMPORTANT - Make sure your prefix is unique and includes your name, otherwise the deployment will fail due to naming conflicts)
 4. Ask for a PostgreSQL admin password
 5. Run `terraform apply` — takes about 7–8 minutes
 6. Run a smoke test against the deployed API
 
 To skip the interactive prompts:
 ```bash
-python3 deploy.py --password YourPassword1 --prefix myenv --location westeurope
+python3 deploy.py --password YourPassword1 --prefix learningstepsbob --location westeurope
 ```
 
 Once deployed, the script prints the API URL and SSH command.

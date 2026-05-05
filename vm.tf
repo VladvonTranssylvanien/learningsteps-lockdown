@@ -4,6 +4,7 @@ resource "azurerm_public_ip" "vm" {
   resource_group_name = azurerm_resource_group.main.name
   allocation_method   = "Static"
   sku                 = "Standard"
+  domain_name_label   = lower(var.prefix)
 }
 
 resource "azurerm_network_interface" "vm" {
