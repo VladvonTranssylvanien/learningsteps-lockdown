@@ -78,6 +78,13 @@ def run_out(cmd, cwd=None):
     except FileNotFoundError as exc:
         error(f"Command not found: {cmd[0]}")
         raise SystemExit(1) from exc
+    except subprocess.CalledProcessError as exc:
+        error(f"Command failed with exit code {exc.returncode}")
+        if exc.stderr:
+            print(f"  stderr: {exc.stderr}", file=sys.stderr)
+        if exc.stdout:
+            print(f"  stdout: {exc.stdout}", file=sys.stderr)
+        raise SystemExit(1) from exc
     return r.stdout.strip()
 
 def tf(cmd):
@@ -250,7 +257,7 @@ def check_azure_resources(rg, db_fqdn):
 
     power = run_out(["az", "vm", "get-instance-view",
                      "--resource-group", rg, "--name", vm_name,
-                     "--query", "instanceView.statuses[?starts_with(code,'PowerState/')].displayStatus",
+                     "--query", "instanceView.statuses[?contains(code, 'PowerState')].displayStatus | [0]",
                      "-o", "tsv"])
     if power == "VM running":
         ok("VM is running")
