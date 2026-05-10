@@ -64,3 +64,20 @@ Clone the repo and run deploy.py to set up the base infrastructure, then apply s
 ## Files Modified
 - vm.tf - Removed public IP from NIC
 - outputs.tf - Updated to use private IP and az ssh command
+
+## Bonus Security Features
+
+### Resource Lock
+- Applied CanNotDelete lock on VNet to prevent accidental deletion
+- Tested: deletion attempt returns ScopeLocked error
+
+### Activity Logs
+- Azure Monitor Activity Logs track all NSG modifications
+- Audit trail shows caller, operation, and timestamp
+
+### Fail2Ban
+- Monitors Nginx access logs for repeated 403 errors
+- Bans IPs after 10 failures within 60 seconds for 1 hour
+
+### WAF Implementation Note
+ModSecurity OWASP CRS was not available as a precompiled package for Nginx 1.18 on Ubuntu 22.04. A custom WAF was implemented using Nginx map directives to block SQLi and XSS patterns, returning 403 Forbidden for malicious requests.
