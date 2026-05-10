@@ -1,12 +1,3 @@
-resource "azurerm_public_ip" "vm" {
-  name                = "pip-${var.prefix}-vm"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  allocation_method   = "Static"
-  sku                 = "Standard"
-  domain_name_label   = lower(var.prefix)
-}
-
 resource "azurerm_network_interface" "vm" {
   name                = "nic-${var.prefix}-vm"
   location            = azurerm_resource_group.main.location
@@ -16,7 +7,6 @@ resource "azurerm_network_interface" "vm" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.app.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.vm.id
   }
 }
 

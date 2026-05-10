@@ -1,11 +1,11 @@
-output "vm_public_ip" {
-  description = "Public IP of the API VM"
-  value       = azurerm_public_ip.vm.ip_address
+output "vm_private_ip" {
+  description = "Private IP of the API VM"
+  value       = azurerm_network_interface.vm.private_ip_address
 }
 
 output "api_url" {
   description = "URL to reach the LearningSteps API"
-  value       = "http://${azurerm_public_ip.vm.ip_address}:8000/docs"
+  value       = "http://${azurerm_network_interface.vm.private_ip_address}:8000/docs"
 }
 
 output "postgresql_fqdn" {
@@ -19,6 +19,6 @@ output "resource_group_name" {
 }
 
 output "ssh_command" {
-  description = "Command to SSH into the VM"
-  value       = "ssh ${var.vm_admin_username}@${azurerm_public_ip.vm.ip_address}"
+  description = "Command to SSH into the VM via Azure CLI"
+  value       = "az ssh vm -n vm-${var.prefix} -g rg-${var.prefix}"
 }

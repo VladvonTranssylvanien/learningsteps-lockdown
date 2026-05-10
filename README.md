@@ -1,86 +1,66 @@
-# LearningSteps — Base Deployment
+# LearningSteps Lockdown - Security Hardening Project
 
-A one-command Azure deployment of the [LearningSteps](https://github.com/CyberstepsDE/learningsteps) API and a PostgreSQL database.
+## Overview
+This project transforms an intentionally insecure Azure deployment into a hardened, production-ready architecture.
 
-> **This deployment is intentionally minimal and unsecured.** The VM is publicly reachable, the database accepts connections from any IP, credentials are stored in plaintext, and there is no traffic inspection or monitoring. It is a starting point — not a production setup.
+## Architecture
 
-## What Gets Deployed
+### Before (Insecure)
+- VM with public IP directly exposed
+- NSG allowing all traffic on ports 22, 80, 8000
+- PostgreSQL with public IP and open firewall
+- No authentication on API
+- No encryption
 
-- **Ubuntu VM** (Standard_D2s_v3) running the FastAPI application on port 8000
-- **Azure PostgreSQL Flexible Server** (B1ms) as the database
-- A virtual network with one subnet and a basic network security group
+### After (Hardened)
+- VM with no public IP, access only via Azure Bastion
+- Identity-based SSH via Microsoft Entra ID
+- API protected by oauth2-proxy with JWT validation
+- PostgreSQL isolated in private VNet with no public IP
+- Nginx edge layer with TLS 1.2/1.3, HSTS, WAF, rate limiting
 
-## Prerequisites
+## Security Improvements by Day
 
-Install the following before running the script:
+### Day 2: Perimeter Security
+- Removed public IP from VM (Azure Policy compliance)
+- Enabled Managed Identity on VM
+- Installed AADSSHLoginForLinux extension
+- Granted RBAC role: Virtual Machine Administrator Login
+- Deployed Azure Bastion Standard with tunneling
+- Restricted NSG port 22 to specific IP and Bastion subnet only
 
-| Tool | Install |
-|---|---|
-| Python 3.8+ | [python.org](https://www.python.org/downloads/) — on Windows use `python`, on macOS/Linux use `python3` |
-| Terraform ≥ 1.5 | [developer.hashicorp.com/terraform/install](https://developer.hashicorp.com/terraform/install) |
-| Azure CLI | [learn.microsoft.com/en-us/cli/azure/install-azure-cli](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) |
-| Azure subscription | Your account needs **Contributor** or **Owner** role on the subscription |
+### Day 3: API Security
+- Created App Registration in Microsoft Entra ID
+- Deployed oauth2-proxy as systemd sidecar on port 80
+- Configured OIDC with tenant v2.0 endpoint
+- Removed port 8000 from NSG (FastAPI no longer directly accessible)
+- All API access requires valid Bearer Token (JWT)
 
-## Deploy
+### Day 4: Data Isolation
+- Deleted public PostgreSQL instance
+- Created dedicated delegated subnet (snet-db 10.0.3.0/24)
+- Created private DNS zone for PostgreSQL
+- Redeployed PostgreSQL with VNet Integration (no public IP)
+- Migrated all data via pg_dump/psql restore
+- DB accessible only from within VNet
 
-```bash
-python3 deploy.py
-```
+### Day 5: Edge Security
+- Moved oauth2-proxy to localhost:4180
+- Deployed Nginx as edge proxy on ports 80/443
+- Generated self-signed TLS certificate (RSA 2048, TLS 1.2/1.3)
+- HTTP to HTTPS redirect
+- Security headers: HSTS, X-Content-Type-Options, X-Frame-Options
+- Rate limiting: 10 req/s, burst 20, returns 429
+- WAF rules blocking SQLi and XSS patterns
+- Removed port 80 from NSG, only 443 allowed
 
-On Windows:
-```
-python deploy.py
-```
+## Final Architecture
+Internet -> NSG (443 only) -> Nginx (TLS + WAF + Rate Limit) -> oauth2-proxy (JWT) -> FastAPI -> PostgreSQL (private VNet)
+Management: Azure Bastion -> VM (Entra ID login)
 
-The script will:
-1. Log you in to Azure if needed (opens a browser)
-2. Generate an SSH key pair in the project folder
-3. Ask for a resource prefix and Azure region (IMPORTANT - Make sure your prefix is unique and includes your name, otherwise the deployment will fail due to naming conflicts)
-4. Ask for a PostgreSQL admin password
-5. Run `terraform apply` — takes about 7–8 minutes
-6. Run a smoke test against the deployed API
+## Deployment
+Clone the repo and run deploy.py to set up the base infrastructure, then apply security hardening manually as documented above.
 
-To skip the interactive prompts:
-```bash
-python3 deploy.py --password YourPassword1 --prefix learningstepsbob --location westeurope
-```
-
-Once deployed, the script prints the API URL and SSH command.
-
-## Stopping and Starting
-
-When not in use, deallocate the VM to avoid compute charges:
-```bash
-az vm deallocate --resource-group rg-<prefix> --name vm-<prefix>
-```
-
-Start it again:
-```bash
-az vm start --resource-group rg-<prefix> --name vm-<prefix>
-```
-
-Stop the database:
-```bash
-az postgres flexible-server stop --resource-group rg-<prefix> --name psql-<prefix>-<suffix>
-```
-
-Start it again:
-```bash
-az postgres flexible-server start --resource-group rg-<prefix> --name psql-<prefix>-<suffix>
-```
-
-> Note: Azure automatically restarts a stopped PostgreSQL Flexible Server after 7 days.
-
-To destroy everything permanently:
-```bash
-terraform destroy
-```
-
-## SSH Access
-
-The SSH key is generated in the project folder during deployment:
-
-```bash
-ssh azureuser@<vm-ip> -i .learningsteps_key
-```
-
+## Files Modified
+- vm.tf - Removed public IP from NIC
+- outputs.tf - Updated to use private IP and az ssh command
