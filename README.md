@@ -26,15 +26,19 @@ This project transforms an intentionally insecure Azure deployment into a harden
 - Enabled Managed Identity on VM
 - Installed AADSSHLoginForLinux extension
 - Granted RBAC role: Virtual Machine Administrator Login
-- Deployed Azure Bastion Standard with tunneling
+- Deployed Azure Bastion with tunneling
 - Restricted NSG port 22 to specific IP and Bastion subnet only
+
+![Day 2 - Entra ID Login](docs/day2-entra-login.png)
 
 ### Day 3: API Security
 - Created App Registration in Microsoft Entra ID
-- Deployed oauth2-proxy as systemd sidecar on port 80
+- Deployed oauth2-proxy as systemd sidecar on port 4180
 - Configured OIDC with tenant v2.0 endpoint
-- Removed port 8000 from NSG (FastAPI no longer directly accessible)
+- Removed port 8000 from NSG
 - All API access requires valid Bearer Token (JWT)
+
+![Day 3 - Token Tests](docs/day3-token-tests.png)
 
 ### Day 4: Data Isolation
 - Deleted public PostgreSQL instance
@@ -42,7 +46,9 @@ This project transforms an intentionally insecure Azure deployment into a harden
 - Created private DNS zone for PostgreSQL
 - Redeployed PostgreSQL with VNet Integration (no public IP)
 - Migrated all data via pg_dump/psql restore
-- DB accessible only from within VNet
+
+![Day 4 - DB Success from VM](docs/day4-db-success.png)
+![Day 4 - DB Failure from Outside](docs/day4-db-failure.png)
 
 ### Day 5: Edge Security
 - Moved oauth2-proxy to localhost:4180
@@ -53,6 +59,9 @@ This project transforms an intentionally insecure Azure deployment into a harden
 - Rate limiting: 10 req/s, burst 20, returns 429
 - WAF rules blocking SQLi and XSS patterns
 - Removed port 80 from NSG, only 443 allowed
+
+![Day 5 - HTTPS and WAF](docs/day5-https-waf.png)
+![Day 5 - Rate Limiting](docs/day5-rate-limit.png)
 
 ## Final Architecture
 Internet -> NSG (443 only) -> Nginx (TLS + WAF + Rate Limit) -> oauth2-proxy (JWT) -> FastAPI -> PostgreSQL (private VNet)
