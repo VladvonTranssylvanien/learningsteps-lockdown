@@ -1,11 +1,11 @@
-# LearningSteps Lockdown — End-to-End Security Hardening
+# LearningSteps Lockdown - End-to-End Security Hardening
 
 ## Project Overview
 
-This project documents the complete security hardening of the LearningSteps API, a FastAPI application running on Azure. Starting from an intentionally insecure "minimum viable" deployment, we implemented a multi-layered security architecture following the **Defense in Depth** principle.
+This project documents the complete security hardening of the LearningSteps API, a FastAPI application running on Azure. Starting from an intentionally insecure deployment, we implemented a multi-layered security architecture following the **Defense in Depth** principle.
 
-> **Role:** Lead Security Engineer  
-> **Environment:** Azure (West Europe)  
+> **Role:** Lead Security Engineer
+> **Environment:** Azure (West Europe)
 > **Stack:** Ubuntu 22.04, FastAPI, PostgreSQL 16, Nginx, oauth2-proxy, Microsoft Sentinel
 
 ---
@@ -16,15 +16,58 @@ This project documents the complete security hardening of the LearningSteps API,
 
 - VM exposed directly to internet with public IP
 - SSH accessible from any IP with a static key file
-- API completely anonymous — no authentication
+- API completely anonymous, no authentication
 - PostgreSQL accessible from anywhere on port 5432
 - No logging, no monitoring, no alerting
 
 ### After (Hardened)
 
-    Internet → NSG (443 only) → Nginx (TLS+WAF+RateLimit) → oauth2-proxy (JWT) → FastAPI → PostgreSQL (private VNet)
-    Management: Azure Bastion → VM (Entra ID identity)
-    Monitoring: Azure Monitor → Log Analytics → Microsoft Sentinel → Logic App → NSG (auto-block)
+- Internet to NSG (443 only) to Nginx (TLS+WAF+RateLimit) to oauth2-proxy (JWT) to FastAPI to PostgreSQL (private VNet)
+- Management: Azure Bastion to VM (Entra ID identity)
+- Monitoring: Azure Monitor to Log Analytics to Microsoft Sentinel to Logic App to NSG (auto-block)
+
+```mermaid
+graph TB
+    Internet((Internet))
+    subgraph Edge["Edge Layer"]
+        NSG["NSG - Port 443 only - Deny-SQLi-Attack auto-block"]
+        Nginx["Nginx - TLS 1.2/1.3 - WAF + Rate Limiting"]
+    end
+    subgraph App["Application Layer"]
+        OAuth["oauth2-proxy - JWT Validation"]
+        API["FastAPI - Port 8000 internal"]
+    end
+    subgraph Data["Data Layer"]
+        DB[("PostgreSQL - Private VNet")]
+    end
+    subgraph Mgmt["Management Layer"]
+        Bastion["Azure Bastion"]
+        EntraID["Microsoft Entra ID"]
+    end
+    subgraph SOC["SOC Layer"]
+        AMA["Azure Monitor Agent"]
+        LAW["Log Analytics"]
+        Sentinel["Microsoft Sentinel - SQLi Hunter"]
+        LogicApp["Logic App - Auto-block"]
+    end
+    Internet -->|HTTPS 443| NSG
+    NSG --> Nginx
+    Nginx -->|proxy_pass| OAuth
+    OAuth -->|verified| API
+    API --> DB
+    Bastion -->|Entra ID| EntraID
+    Nginx -->|JSON logs| AMA
+    AMA --> LAW
+    LAW --> Sentinel
+    Sentinel -->|incident| LogicApp
+    LogicApp -->|Deny rule| NSG
+    style Internet fill:#e0e0e0,stroke:#333,color:#000
+    style Edge fill:#fff3e0,stroke:#ff9800,color:#000
+    style App fill:#e3f2fd,stroke:#2196f3,color:#000
+    style Data fill:#fce4ec,stroke:#e91e63,color:#000
+    style Mgmt fill:#e8f5e9,stroke:#4caf50,color:#000
+    style SOC fill:#f3e5f5,stroke:#9c27b0,color:#000
+```
 
     ```mermaid
 graph TB
@@ -80,9 +123,9 @@ graph TB
 
 ## Security Layers
 
-### Layer 1 — Perimeter & Management Plane
+### Layer 1 - Perimeter and Management Plane
 
-**Problem:** Port 22 open to the world, static SSH key on disk.  
+**Problem:** Port 22 open to the world, static SSH key on disk.
 **Solution:** Removed public IP from VM entirely. Access only via Azure Bastion using Microsoft Entra ID identity.
 
 | Component | Implementation |
@@ -97,9 +140,9 @@ graph TB
 
 ---
 
-### Layer 2 — API Identity Gateway
+### Layer 2 - API Identity Gateway
 
-**Problem:** Any anonymous request could read, modify, or delete data.  
+**Problem:** Any anonymous request could read, modify, or delete data.
 **Solution:** Deployed oauth2-proxy as a security sidecar that validates Microsoft Entra ID JWT tokens before forwarding any request to FastAPI.
 
 | Component | Implementation |
@@ -108,20 +151,20 @@ graph TB
 | Token Type | Bearer JWT (v2.0 access tokens) |
 | Proxy | oauth2-proxy v7.6.0 on port 4180 |
 | App Registration | api://1a557f7c-0ac6-4232-8ecd-e3ed0fe7321f |
-| NSG | Port 8000 removed — FastAPI not directly accessible |
+| NSG | Port 8000 removed, FastAPI not directly accessible |
 
 **Test Results:**
-- Anonymous request → `302 redirect to Microsoft login`
-- Invalid token → `302 redirect to Microsoft login`
-- Valid Entra ID token → `200 OK with data`
+- Anonymous request: 302 redirect to Microsoft login
+- Invalid token: 302 redirect to Microsoft login
+- Valid Entra ID token: 200 OK with data
 
 ![Day 3 - Token Tests](docs/day3-token-tests.png)
 
 ---
 
-### Layer 3 — Data Isolation
+### Layer 3 - Data Isolation
 
-**Problem:** PostgreSQL had a public IP and a firewall rule allowing all connections.  
+**Problem:** PostgreSQL had a public IP and a firewall rule allowing all connections.
 **Solution:** Migrated database to VNet Integration with private DNS zone. Zero public exposure.
 
 | Component | Implementation |
@@ -129,20 +172,20 @@ graph TB
 | Network | VNet Integration (snet-db 10.0.3.0/24, delegated) |
 | DNS | Private DNS Zone: vladvontranssylvanien.private.postgres.database.azure.com |
 | Public Access | Disabled |
-| Migration | pg_dump → restore via psql from within VNet |
+| Migration | pg_dump to restore via psql from within VNet |
 
 **Test Results:**
-- Connection from VM → `200 OK, 5 entries returned`
-- Connection from internet → `DNS resolution fails — host not known`
+- Connection from VM: 200 OK, 5 entries returned
+- Connection from internet: DNS resolution fails, host not known
 
 ![Day 4 - DB Success from VM](docs/day4-db-success.png)
 ![Day 4 - DB Failure from Outside](docs/day4-db-failure.png)
 
 ---
 
-### Layer 4 — Edge Security
+### Layer 4 - Edge Security
 
-**Problem:** oauth2-proxy exposed directly on port 80, no encryption, no WAF.  
+**Problem:** oauth2-proxy exposed directly on port 80, no encryption, no WAF.
 **Solution:** Nginx edge proxy with TLS, security headers, rate limiting, and custom WAF rules.
 
 | Component | Implementation |
@@ -157,24 +200,24 @@ graph TB
 **WAF Note:** ModSecurity OWASP CRS was unavailable as a precompiled package for Nginx 1.18 on Ubuntu 22.04. A custom WAF was implemented using Nginx map directives, functionally equivalent to OWASP CRS rules 942100 (SQLi) and 941100 (XSS).
 
 **Test Results:**
-- HTTPS request → `302 with HSTS + security headers`
-- SQLi attempt → `403 Forbidden`
-- Rapid requests → `429 Too Many Requests`
+- HTTPS request: 302 with HSTS and security headers
+- SQLi attempt: 403 Forbidden
+- Rapid requests: 429 Too Many Requests
 
 ![Day 5 - HTTPS and WAF](docs/day5-https-waf.png)
 ![Day 5 - Rate Limiting](docs/day5-rate-limit.png)
 
 ---
 
-### Layer 5 — Monitoring & Automated Incident Response
+### Layer 5 - Monitoring and Automated Incident Response
 
-**Problem:** Logs siloed on VM. No visibility. No automated response.  
+**Problem:** Logs siloed on VM. No visibility. No automated response.
 **Solution:** Full cloud-native SOC with Microsoft Sentinel and automated IP blocking.
 
 | Component | Implementation |
 |-----------|---------------|
 | Log Format | Nginx JSON structured logging |
-| Transport | rsyslog → Azure Monitor Agent → Log Analytics |
+| Transport | rsyslog to Azure Monitor Agent to Log Analytics |
 | SIEM | Microsoft Sentinel on law-vladvontranssylvanien |
 | DCR | Data Collection Rule streaming local7 syslog |
 | Analytics Rule | KQL query detecting 10+ SQLi attempts in 30 min from single IP |
@@ -195,8 +238,8 @@ graph TB
     | where AttemptCount > 10
 
 **Test Results:**
-- 50 SQLi requests sent → Sentinel incident generated (High severity)
-- Logic App triggered → NSG rule Deny-SQLi-Attack created automatically
+- 50 SQLi requests sent: Sentinel incident generated (High severity)
+- Logic App triggered: NSG rule Deny-SQLi-Attack created automatically
 
 ![Day 6 - Log Analytics SQLi Logs](docs/day6-log-analytics.png)
 ![Day 6 - KQL Query Results](docs/day6-kql-query.png)
@@ -209,7 +252,7 @@ graph TB
 
 | Feature | Implementation |
 |---------|---------------|
-| Resource Lock | CanNotDelete on VNet — deletion blocked with ScopeLocked error |
+| Resource Lock | CanNotDelete on VNet, deletion blocked with ScopeLocked error |
 | Activity Logs | Azure Monitor tracks all NSG modifications with caller and timestamp |
 | Fail2Ban | OS-level IP banning based on Nginx 403 patterns |
 | Automated SOC | Full attack-to-block pipeline without human intervention |
