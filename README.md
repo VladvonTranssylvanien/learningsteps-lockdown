@@ -26,6 +26,56 @@ This project documents the complete security hardening of the LearningSteps API,
     Management: Azure Bastion → VM (Entra ID identity)
     Monitoring: Azure Monitor → Log Analytics → Microsoft Sentinel → Logic App → NSG (auto-block)
 
+    ```mermaid
+graph TB
+    Internet((Internet))
+
+    subgraph Edge["Edge Layer"]
+        NSG["NSG\nPort 443 only\nDeny-SQLi-Attack auto-block"]
+        Nginx["Nginx\nTLS 1.2/1.3\nWAF + Rate Limiting"]
+    end
+
+    subgraph App["Application Layer"]
+        OAuth["oauth2-proxy\nJWT Validation"]
+        API["FastAPI\nPort 8000 internal"]
+    end
+
+    subgraph Data["Data Layer"]
+        DB[("PostgreSQL\nPrivate VNet")]
+    end
+
+    subgraph Mgmt["Management Layer"]
+        Bastion["Azure Bastion"]
+        EntraID["Microsoft Entra ID"]
+    end
+
+    subgraph SOC["SOC Layer"]
+        AMA["Azure Monitor Agent"]
+        LAW["Log Analytics"]
+        Sentinel["Microsoft Sentinel\nSQLi Hunter"]
+        LogicApp["Logic App\nAuto-block"]
+    end
+
+    Internet -->|HTTPS 443| NSG
+    NSG --> Nginx
+    Nginx -->|proxy_pass| OAuth
+    OAuth -->|verified| API
+    API --> DB
+    Bastion -->|Entra ID| EntraID
+    Nginx -->|JSON logs| AMA
+    AMA --> LAW
+    LAW --> Sentinel
+    Sentinel -->|incident| LogicApp
+    LogicApp -->|Deny rule| NSG
+
+    style Internet fill:#e0e0e0,stroke:#333,color:#000
+    style Edge fill:#fff3e0,stroke:#ff9800,color:#000
+    style App fill:#e3f2fd,stroke:#2196f3,color:#000
+    style Data fill:#fce4ec,stroke:#e91e63,color:#000
+    style Mgmt fill:#e8f5e9,stroke:#4caf50,color:#000
+    style SOC fill:#f3e5f5,stroke:#9c27b0,color:#000
+```
+
 ---
 
 ## Security Layers
