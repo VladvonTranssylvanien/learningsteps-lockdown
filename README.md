@@ -206,6 +206,13 @@ graph TB
 | Activity Logs | Azure Monitor tracks all NSG modifications with caller and timestamp |
 | Fail2Ban | OS-level IP banning based on Nginx 403 patterns |
 | Automated SOC | Full attack-to-block pipeline without human intervention |
+| Key Vault | DB password and M2M client secret stored in Azure Key Vault, fetched via Managed Identity |
+| Machine-to-Machine Auth | Client credentials flow tested with secret retrieved from Key Vault |
+| Geographic Visualization | Sentinel Workbook with world map showing SQLi attack origins |
+
+![Bonus - Key Vault](docs/day-bonus-keyvault.png)
+![Bonus - M2M Auth](docs/day-bonus-m2m.png)
+![Bonus - Geographic Visualization](docs/day-bonus-geography.png)
 
 ---
 
