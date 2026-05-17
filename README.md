@@ -4,8 +4,10 @@
 
 This project documents the complete security hardening of the LearningSteps API, a FastAPI application running on Azure. Starting from an intentionally insecure deployment, we implemented a multi-layered security architecture following the **Defense in Depth** principle.
 
-> **Role:** Lead Security Engineer
+> **Role:** Cybersecurity Analyst & Cloud Engineer
+> 
 > **Environment:** Azure (West Europe)
+> 
 > **Stack:** Ubuntu 22.04, FastAPI, PostgreSQL 16, Nginx, oauth2-proxy, Microsoft Sentinel
 
 ---
