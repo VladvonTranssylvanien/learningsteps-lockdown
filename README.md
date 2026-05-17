@@ -209,6 +209,7 @@ graph TB
 | Key Vault | DB password and M2M client secret stored in Azure Key Vault, fetched via Managed Identity |
 | Machine-to-Machine Auth | Client credentials flow tested with secret retrieved from Key Vault |
 | Geographic Visualization | Sentinel Workbook with world map showing SQLi attack origins |
+| Architecture Diagram | Mermaid diagram showing all 5 security layers and data flow |
 
 ![Bonus - Key Vault](docs/day-bonus-keyvault.png)
 ![Bonus - M2M Auth](docs/day-bonus-m2m.png)
